@@ -91,6 +91,10 @@ def start_job(filename, message, api_key):
     csv_rows = []
     fields = []
 
+    if not os.path.isfile(app.config['UPLOAD_FOLDER'] + filename):
+        with open(app.config['UPLOAD_FOLDER'] + filename, 'w') as f:
+            f.write(' ')
+
     logging.basicConfig(filename=app.config['LOGS_FOLDER'] + filename + ".log",
                     format='%(asctime)s %(message)s',
                     filemode='w')
