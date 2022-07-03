@@ -136,6 +136,9 @@ def start_job(filename, message, api_key):
 
     print(app.config['PROCESSED_FOLDER'] + '/processed-' + filename)
     logging.shutdown()
+    
+    if os.path.isfile(app.config['UPLOAD_FOLDER'] + filename):
+        os.remove(app.config['UPLOAD_FOLDER'] + filename)
         
 
 
