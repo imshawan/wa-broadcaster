@@ -24,7 +24,7 @@ total_threads_running = 0
 
 
 def get_timestamp():
-    return int(time.time() * 1000000)
+    return int(time.time() * 10000)
 
 def hit_api(payload, api_key):
     headers = {'D360-API-KEY': api_key, 'Accept': '*/*'}
