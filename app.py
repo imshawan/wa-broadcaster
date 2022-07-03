@@ -91,6 +91,8 @@ def start_job(filename, message, api_key):
     csv_rows = []
     fields = []
 
+    print(f"Job started at: {get_timestamp()}")
+
     if not os.path.isfile(app.config['UPLOAD_FOLDER'] + filename):
         with open(app.config['UPLOAD_FOLDER'] + filename, 'w') as f:
             f.write(' ')
@@ -143,6 +145,9 @@ def start_job(filename, message, api_key):
     
     if os.path.isfile(app.config['UPLOAD_FOLDER'] + filename):
         os.remove(app.config['UPLOAD_FOLDER'] + filename)
+
+    print(f"Job ended at: {get_timestamp()}")
+    
         
 
 
@@ -215,7 +220,7 @@ def insert_item():
 
             return Response(json.dumps({
                 "status": "Ok",
-                "message": "File was saved to the server"
+                "message": "Data published and broadcast process was started successfully"
             }),
                 status=200,
                 mimetype='application/json')
