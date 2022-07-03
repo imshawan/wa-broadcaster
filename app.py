@@ -1,4 +1,4 @@
-import os, time, requests, threading, io, csv
+import os, time, requests, threading, io, csv, logging
 from flask import Flask, request, Response, send_from_directory
 from werkzeug.utils import secure_filename
 import json
@@ -9,6 +9,8 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # Max 100MB limit
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['PROCESSED_FOLDER'] = 'processed'
+app.config['LOGS_FOLDER'] = 'logs/'
+
 app.config['CALLBACK_URL'] = ''
 app.config['BASE_URL'] = '/api'
 app.config['ALLOWED_EXTENSIONS'] = {'csv', 'jpg'}
@@ -88,6 +90,13 @@ def start_job(filename, message, api_key):
 
     csv_rows = []
     fields = []
+
+    logging.basicConfig(filename=app.config['LOGS_FOLDER'] + filename + ".log",
+                    format='%(asctime)s %(message)s',
+                    filemode='w')
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
     
     with io.open(app.config['UPLOAD_FOLDER'] + filename, 'r+', encoding='utf-8') as f:
         csvreader = csv.reader(f)
@@ -99,6 +108,7 @@ def start_job(filename, message, api_key):
             try:
                 wa_id = row[2]
                 message['to'] = wa_id
+                logger.info(f"Sending message to: {wa_id}")
                 req = hit_api(message, api_key)
                 
                 if (req):
@@ -106,11 +116,15 @@ def start_job(filename, message, api_key):
                     csv_rows.append(row)
                     successful += 1
                 else:
+                    logger.error(f"Error while sending message to: {wa_id}")
                     row.append('failed')
                     csv_rows.append(row)
                     failed += 1
 
-            except:
+            except Exception as ex:
+                logger.error(f"Error while sending message to: {wa_id}")
+                logger.error(ex)
+
                 row.append('failed')
                 csv_rows.append(row)
                 failed += 1
@@ -121,6 +135,7 @@ def start_job(filename, message, api_key):
         csvwriter.writerows(csv_rows)
 
     print(app.config['PROCESSED_FOLDER'] + '/processed-' + filename)
+    logging.shutdown()
         
 
 
