@@ -5,6 +5,9 @@ from flask import Flask, request, Response, send_from_directory
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
 from threading import Thread
+from requests.packages import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 app = Flask(__name__)
@@ -48,7 +51,8 @@ def get_timestamp():
     return int(time.time() * 1000)
 
 def hit_api(payload, api_key):
-    headers = {'D360-API-KEY': api_key, 'Accept': '*/*'}
+    headers = {'D360-API-KEY': api_key, 'Accept': '*/*',
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Mobile Safari/537.36'}
     req = requests.post(app.config['API_URI'], json=payload, headers=headers, allow_redirects=False, verify=False)
     status_code = req.status_code
     req.close()
@@ -139,7 +143,7 @@ def process_csv_data(data, message, api_key, logger):
     return processed, failed, successful
 
 def start_job(filename, message, api_key):
-    max_threads_per_csv = 4
+    max_threads_per_csv = 2
 
     total = 0
     successful = 0
