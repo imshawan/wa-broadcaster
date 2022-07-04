@@ -6,6 +6,8 @@ from werkzeug.utils import secure_filename
 from flask_cors import CORS
 from threading import Thread
 from requests.packages import urllib3
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -53,7 +55,16 @@ def get_timestamp():
 def hit_api(payload, api_key):
     headers = {'D360-API-KEY': api_key, 'Accept': '*/*',
                 'User-Agent': 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Mobile Safari/537.36'}
-    req = requests.post(app.config['API_URI'], json=payload, headers=headers, allow_redirects=False, verify=False)
+    # req = requests.post(app.config['API_URI'], json=payload, headers=headers, allow_redirects=False, verify=False)
+    
+    session = requests.Session()
+    retry = Retry(connect=4, backoff_factor=0.5)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+
+    req = session.post(app.config['API_URI'], json=payload, headers=headers, allow_redirects=False, verify=False)
+    
     status_code = req.status_code
     req.close()
 
