@@ -112,9 +112,9 @@ def process_csv_data(data, message, api_key, logger):
         try:
             wa_id = row[2]
             message['to'] = wa_id
-            logger.info(f"Sending message to: {wa_id}")
+            logger.info(f"Sending message to: {wa_id} at {get_timestamp()}")
             req = hit_api(message, api_key)
-            # req = True
+            logger.info(f"Sent successfully to: {wa_id} at {get_timestamp()}")
             
             if (req):
                 row.append('success')
@@ -127,7 +127,7 @@ def process_csv_data(data, message, api_key, logger):
                 failed += 1
 
         except Exception as ex:
-            logger.error(f"Error while sending message to: {wa_id}")
+            logger.error(f"Error while sending message to: {wa_id} at {get_timestamp()}")
             logger.error(ex)
 
             row.append('failed')
