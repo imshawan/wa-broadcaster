@@ -49,10 +49,10 @@ def get_timestamp():
 
 def hit_api(payload, api_key):
     headers = {'D360-API-KEY': api_key, 'Accept': '*/*'}
-    req = requests.post(app.config['API_URI'], json=payload, headers=headers, allow_redirects=False)
+    req = requests.post(app.config['API_URI'], json=payload, headers=headers, allow_redirects=False, verify=False)
     status_code = req.status_code
     req.close()
-    
+
     if status_code < 300:
         return True
     else:
