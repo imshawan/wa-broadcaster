@@ -241,5 +241,14 @@ def insert_item():
 
 @app.route('/processed/<filename>', methods=['GET'])
 def send_file(filename):
-    print(filename)
+    if not filename:
+        return f'Cannot {request.method} /{request.path}'
     return send_from_directory(app.config['PROCESSED_FOLDER'], filename)
+
+@app.route('/<path:path>', methods=['GET', 'PUT', 'POST', 'DELETE'])
+def not_found(path):
+    return f'Cannot {request.method} /{path}'
+
+@app.route('/', methods=['GET', 'PUT', 'POST', 'DELETE'])
+def home_not_found():
+    return f'Cannot {request.method} /'
