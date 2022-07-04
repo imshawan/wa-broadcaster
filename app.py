@@ -1,10 +1,15 @@
-import os, time, requests, threading, io, csv, logging
+from concurrent.futures import thread
+import json
+import os, time, requests, io, csv, logging
 from flask import Flask, request, Response, send_from_directory
 from werkzeug.utils import secure_filename
-import json
+from flask_cors import CORS
+from threading import Thread
 
 
 app = Flask(__name__)
+cors = CORS(app, origins=['http://localhost'])
+
 
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # Max 100MB limit
 app.config['UPLOAD_FOLDER'] = 'uploads/'
@@ -21,6 +26,22 @@ app.config['REQUIRED_FIELDS'] = ['namespace', 'lang_code',
 
 global total_threads_running
 total_threads_running = 0
+
+class threading_with_return_values(Thread):
+    '''Normally threads do not return anything, overriding the default threading mechanism'''
+
+    def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, *, daemon=None):
+        Thread.__init__(self, group, target, name, args, kwargs, daemon=daemon)
+
+        self._return = None
+
+    def run(self):
+        if self._target is not None:
+            self._return = self._target(*self._args, **self._kwargs)
+
+    def join(self):
+        Thread.join(self)
+        return self._return
 
 
 def get_timestamp():
@@ -82,14 +103,48 @@ def prepare_message(namespace, lang_code, wa_id, image, body_1, body_2, template
         }
     }
 
+def process_csv_data(data, message, api_key, logger):
+    processed = []
+    successful = 0
+    failed = 0
+
+    for row in data:
+        try:
+            wa_id = row[2]
+            message['to'] = wa_id
+            logger.info(f"Sending message to: {wa_id}")
+            #req = hit_api(message, api_key)
+            req = True
+            
+            if (req):
+                row.append('success')
+                processed.append(row)
+                successful += 1
+            else:
+                logger.error(f"Error while sending message to: {wa_id}")
+                row.append('failed')
+                processed.append(row)
+                failed += 1
+
+        except Exception as ex:
+            logger.error(f"Error while sending message to: {wa_id}")
+            logger.error(ex)
+
+            row.append('failed')
+            processed.append(row)
+            failed += 1
+    return processed, failed, successful
 
 def start_job(filename, message, api_key):
+    max_threads_per_csv = 8
+
     total = 0
     successful = 0
     failed = 0
 
     csv_rows = []
     fields = []
+    threads = []
 
     # print(f"Job started at: {get_timestamp()}")
 
@@ -98,7 +153,7 @@ def start_job(filename, message, api_key):
 
     if not os.path.isfile(app.config['UPLOAD_FOLDER'] + filename):
         with open(app.config['UPLOAD_FOLDER'] + filename, 'w') as f:
-            f.write(' ')
+            f.write('')
 
     logging.basicConfig(filename=app.config['LOGS_FOLDER'] + filename + ".log",
                     format='%(asctime)s %(message)s',
@@ -111,32 +166,25 @@ def start_job(filename, message, api_key):
         csvreader = csv.reader(f)
         fields = next(csvreader)
         fields.append('Status')
-        total = len(list(csvreader))
+        csv_items = list(csvreader)
+        total = len(csv_items)
 
-        for row in csvreader:
-            try:
-                wa_id = row[2]
-                message['to'] = wa_id
-                logger.info(f"Sending message to: {wa_id}")
-                req = hit_api(message, api_key)
-                
-                if (req):
-                    row.append('success')
-                    csv_rows.append(row)
-                    successful += 1
-                else:
-                    logger.error(f"Error while sending message to: {wa_id}")
-                    row.append('failed')
-                    csv_rows.append(row)
-                    failed += 1
+        final = [csv_items[i * max_threads_per_csv:(i + 1) * max_threads_per_csv] for i in range((len(csv_items) + max_threads_per_csv - 1) // max_threads_per_csv )]
 
-            except Exception as ex:
-                logger.error(f"Error while sending message to: {wa_id}")
-                logger.error(ex)
+        for elem in final:
+            threads.append(threading_with_return_values(target=process_csv_data, args=(elem, message, api_key, logger, )))
 
-                row.append('failed')
-                csv_rows.append(row)
-                failed += 1
+        for workers in threads:
+            workers.start()
+        
+        for workers in threads:
+            array, f, s = workers.join()
+            failed += f
+            successful += s
+
+            for arr in array:
+                csv_rows.append(arr)
+
 
     with io.open(app.config['PROCESSED_FOLDER'] + '/processed-' + filename, 'w', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile)
@@ -219,7 +267,7 @@ def insert_item():
             filename = str(get_timestamp()) + '-' + secure_filename(file.filename)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
-            worker = threading.Thread(target=start_job, args=((filename, message, api_key, )))
+            worker = Thread(target=start_job, args=((filename, message, api_key, )))
             worker.start()
             total_threads_running += 1
 
