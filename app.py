@@ -113,8 +113,8 @@ def process_csv_data(data, message, api_key, logger):
             wa_id = row[2]
             message['to'] = wa_id
             logger.info(f"Sending message to: {wa_id}")
-            #req = hit_api(message, api_key)
-            req = True
+            req = hit_api(message, api_key)
+            # req = True
             
             if (req):
                 row.append('success')
