@@ -91,7 +91,10 @@ def start_job(filename, message, api_key):
     csv_rows = []
     fields = []
 
-    print(f"Job started at: {get_timestamp()}")
+    # print(f"Job started at: {get_timestamp()}")
+
+    if not os.path.exists(os.path.join(os.getcwd(), 'logs')):
+        os.mkdir(os.path.join(os.getcwd(), 'logs'))
 
     if not os.path.isfile(app.config['UPLOAD_FOLDER'] + filename):
         with open(app.config['UPLOAD_FOLDER'] + filename, 'w') as f:
@@ -108,9 +111,9 @@ def start_job(filename, message, api_key):
         csvreader = csv.reader(f)
         fields = next(csvreader)
         fields.append('Status')
+        total = len(list(csvreader))
 
         for row in csvreader:
-            total += 1
             try:
                 wa_id = row[2]
                 message['to'] = wa_id
@@ -144,9 +147,12 @@ def start_job(filename, message, api_key):
     logging.shutdown()
     
     if os.path.isfile(app.config['UPLOAD_FOLDER'] + filename):
+        print('Clearing up the source file...')
         os.remove(app.config['UPLOAD_FOLDER'] + filename)
 
-    print(f"Job ended at: {get_timestamp()}")
+    print(f"Filename: {filename}, \n Total records: {total}, Successful: {successful}, Failed: {failed}")
+
+    # print(f"Job ended at: {get_timestamp()}")
     
         
 
