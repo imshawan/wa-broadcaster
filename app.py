@@ -136,7 +136,7 @@ def process_csv_data(data, message, api_key, logger):
     return processed, failed, successful
 
 def start_job(filename, message, api_key):
-    max_threads_per_csv = 8
+    max_threads_per_csv = 4
 
     total = 0
     successful = 0
