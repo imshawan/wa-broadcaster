@@ -146,7 +146,7 @@ def start_job(filename, message, api_key):
     fields = []
     threads = []
 
-    # print(f"Job started at: {get_timestamp()}")
+    print(f"Job started at: {get_timestamp()}")
 
     if not os.path.exists(os.path.join(os.getcwd(), 'logs')):
         os.mkdir(os.path.join(os.getcwd(), 'logs'))
@@ -200,7 +200,7 @@ def start_job(filename, message, api_key):
 
     print(f"Filename: {filename}, \n Total records: {total}, Successful: {successful}, Failed: {failed}")
 
-    # print(f"Job ended at: {get_timestamp()}")
+    print(f"Job ended at: {get_timestamp()}")
     
         
 
