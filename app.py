@@ -111,7 +111,6 @@ def start_job(filename, message, api_key):
         csvreader = csv.reader(f)
         fields = next(csvreader)
         fields.append('Status')
-        total = len(list(csvreader))
 
         for row in csvreader:
             try:
@@ -138,6 +137,8 @@ def start_job(filename, message, api_key):
                 csv_rows.append(row)
                 failed += 1
 
+        total = len(list(csvreader))
+
     with io.open(app.config['PROCESSED_FOLDER'] + '/processed-' + filename, 'w', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile)
         csvwriter.writerow(fields)
@@ -157,7 +158,7 @@ def start_job(filename, message, api_key):
         
 
 
-
+# Routing
 
 @app.route(app.config['BASE_URL'] + '/broadcast', methods=['POST'])
 def insert_item():
