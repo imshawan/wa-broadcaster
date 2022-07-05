@@ -222,7 +222,8 @@ def start_job(filename, message, api_key):
     
         
 
-# Routings
+
+
 
 @app.route(app.config['BASE_URL'] + '/broadcast', methods=['POST'])
 def insert_item():
