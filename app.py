@@ -184,25 +184,30 @@ def start_job(filename, message, api_key):
         csvreader = csv.reader(f)
         fields = next(csvreader)
         fields.append('Status')
-        csv_items = list(csvreader)
-        total = len(csv_items)
 
-        final = [csv_items[i * max_threads_per_csv:(i + 1) * max_threads_per_csv] for i in range((len(csv_items) + max_threads_per_csv - 1) // max_threads_per_csv )]
+        for row in csvreader:
+            try:
+                wa_id = row[2]
+                message['to'] = wa_id
+                logger.info(f"Sending message to: {wa_id}")
+                req = hit_api(message, api_key)
+                
+                if (req):
+                    row.append('success')
+                    csv_rows.append(row)
+                    successful += 1
+                else:
+                    logger.error(f"Error while sending message to: {wa_id}")
+                    row.append('failed')
+                    csv_rows.append(row)
+                    failed += 1
 
-        for elem in final:
-            threads.append(threading_with_return_values(target=process_csv_data, args=(elem, message, api_key, logger, )))
+            except Exception as ex:
+                logger.error(f"Error while sending message to: {wa_id}")
+                logger.error(ex)
 
-        for workers in threads:
-            workers.start()
-        
-        for workers in threads:
-            array, f, s = workers.join()
-            failed += f
-            successful += s
 
-            for arr in array:
-                csv_rows.append(arr)
-
+        total = len(list(csvreader))
 
     with io.open(app.config['PROCESSED_FOLDER'] + '/processed-' + filename, 'w', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile)
@@ -222,7 +227,8 @@ def start_job(filename, message, api_key):
     
         
 
-# Routings
+
+# Routing
 
 @app.route(app.config['BASE_URL'] + '/broadcast', methods=['POST'])
 def insert_item():
