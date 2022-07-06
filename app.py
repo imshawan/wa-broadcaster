@@ -141,12 +141,12 @@ def start_job(filename, message, api_key):
 
         total = len(list(csvreader))
 
-    with io.open(app.config['PROCESSED_FOLDER'] + '/processed-' + filename, 'w', encoding='utf-8') as csvfile:
+    with io.open(app.config['PROCESSED_FOLDER'] + '/processed-' + filename + '.csv', 'w', encoding='utf-8') as csvfile:
         csvwriter = csv.writer(csvfile)
         csvwriter.writerow(fields)
         csvwriter.writerows(csv_rows)
 
-    print(app.config['PROCESSED_FOLDER'] + '/processed-' + filename)
+    print(app.config['PROCESSED_FOLDER'] + '/processed-' + filename + '.csv')
     logging.shutdown()
     
     if os.path.isfile(app.config['UPLOAD_FOLDER'] + filename):
@@ -155,6 +155,17 @@ def start_job(filename, message, api_key):
 
     print(f"Filename: {filename}, \n Total records: {total}, Successful: {successful}, Failed: {failed}")
 
+    try:
+        requests.post('http://broadcast.heyx.io/user/user/broadcast_callback', json={
+            "result_url": f"{app.config['PROCESSED_FOLDER']}/processed-{filename}.csv",
+            "stats": {
+                "total": total,
+                "successful": successful,
+                "failed": failed
+            }
+        })
+    except:
+        pass
     # print(f"Job ended at: {get_timestamp()}")
     
         
