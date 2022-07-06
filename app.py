@@ -156,7 +156,7 @@ def start_job(filename, message, api_key):
     print(f"Filename: {filename}, \n Total records: {total}, Successful: {successful}, Failed: {failed}")
 
     try:
-        requests.post('http://broadcast.heyx.io/user/user/broadcast_callback', json={
+        callbck = requests.post('http://broadcast.heyx.io/user/user/broadcast_callback', json={
             "result_url": f"{app.config['PROCESSED_FOLDER']}/processed-{filename}.csv",
             "stats": {
                 "total": total,
@@ -165,6 +165,8 @@ def start_job(filename, message, api_key):
             },
             "name": "broadcaster"
         })
+        print(callbck.status_code)
+        print(callbck)
     except:
         pass
     # print(f"Job ended at: {get_timestamp()}")
