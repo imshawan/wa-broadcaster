@@ -162,7 +162,8 @@ def start_job(filename, message, api_key):
                 "total": total,
                 "successful": successful,
                 "failed": failed
-            }
+            },
+            "name": "broadcaster"
         })
     except:
         pass
