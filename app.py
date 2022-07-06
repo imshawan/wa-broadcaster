@@ -16,8 +16,10 @@ app.config['BASE_URL'] = '/api'
 app.config['ALLOWED_EXTENSIONS'] = {'csv', 'jpg'}
 app.config['API_AUTH'] = {}
 app.config['API_URI'] = 'https://waba.360dialog.io/v1/messages'
-app.config['REQUIRED_FIELDS'] = ['namespace', 'lang_code',
-                                 'image_url', 'body_1', 'body_2', 'api_key', 'template_name']
+# app.config['REQUIRED_FIELDS'] = ['namespace', 'lang_code', 'file',
+                                #  'image_url', 'body_1', 'body_2', 'api_key', 'template_name']
+
+app.config['REQUIRED_FIELDS'] = ['body', 'file', 'api_key']
 
 global total_threads_running
 total_threads_running = 0
@@ -114,7 +116,7 @@ def start_job(filename, message, api_key):
 
         for row in csvreader:
             try:
-                wa_id = row[2]
+                wa_id = row[0]
                 message['to'] = wa_id
                 logger.info(f"Sending message to: {wa_id}")
                 req = hit_api(message, api_key)
@@ -166,7 +168,7 @@ def insert_item():
     missing_fields = []
 
     try:
-        request_data = request.form
+        request_data = request.get_json()
     except:
         return Response(json.dumps({
                 "status": "bad-request",
@@ -187,57 +189,75 @@ def insert_item():
                 status=200,
                 mimetype='application/json')
 
-    namespace = request_data['namespace']
-    lang_code = request_data['lang_code']
+    message = request_data['body']
+    # namespace = request_data['namespace']
+    # lang_code = request_data['lang_code']
 
-    image_url = request_data['image_url']
-    body_1 = request_data['body_1']
-    body_2 = request_data['body_2']
+    # image_url = request_data['image_url']
+    # body_1 = request_data['body_1']
+    # body_2 = request_data['body_2']
+    # api_key = request_data['api_key']
+    # template_name = request_data['template_name']
+    file_url = request_data['file']
     api_key = request_data['api_key']
-    template_name = request_data['template_name']
 
-    if 'file' not in request.files:
-            return Response(json.dumps({
-            "status": "bad-request",
-            "message": "No file was supplied"
-        }),
-            status=200,
-            mimetype='application/json')
+    # if 'file' not in request.files:
+    #         return Response(json.dumps({
+    #         "status": "bad-request",
+    #         "message": "No file was supplied"
+    #     }),
+    #         status=200,
+    #         mimetype='application/json')
 
-    file = request.files['file']
+    # file = request.files['file']
 
-    if file.filename == '':
-        return Response(json.dumps({
-            "status": "bad-request",
-            "message": "No filename"
-        }),
-            status=200,
-            mimetype='application/json')
+    # if file.filename == '':
+    #     return Response(json.dumps({
+    #         "status": "bad-request",
+    #         "message": "No filename"
+    #     }),
+    #         status=200,
+    #         mimetype='application/json')
             
 
-    message = prepare_message(namespace, lang_code, '', image_url, body_1, body_2, template_name)
+    # message = prepare_message(namespace, lang_code, '', image_url, body_1, body_2, template_name)
 
-    if file and file_is_allowed(file.filename):
-            filename = str(get_timestamp()) + '-' + secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    resp = requests.get(file_url)
+    filename  = str(get_timestamp()) + '-' + 'records'
+    open(os.path.join(app.config['UPLOAD_FOLDER'], filename), "wb").write(resp.content)
 
-            worker = threading.Thread(target=start_job, args=((filename, message, api_key, )))
-            worker.start()
-            total_threads_running += 1
+    worker = threading.Thread(target=start_job, args=((filename, message, api_key, )))
+    worker.start()
+    total_threads_running += 1
 
-            return Response(json.dumps({
+    return Response(json.dumps({
                 "status": "Ok",
                 "message": "Data published and broadcast process was started successfully"
             }),
                 status=200,
                 mimetype='application/json')
-    else:
-        return Response(json.dumps({
-                "status": "bad-request",
-                "message": "Invalid file-type supplied, valid file-types are: " + get_valid_files()
-            }),
-                status=200,
-                mimetype='application/json')
+
+    # if file and file_is_allowed(file.filename):
+    #         filename = str(get_timestamp()) + '-' + secure_filename(file.filename)
+    #         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
+    #         worker = threading.Thread(target=start_job, args=((filename, message, api_key, )))
+    #         worker.start()
+    #         total_threads_running += 1
+
+    #         return Response(json.dumps({
+    #             "status": "Ok",
+    #             "message": "Data published and broadcast process was started successfully"
+    #         }),
+    #             status=200,
+    #             mimetype='application/json')
+    # else:
+    #     return Response(json.dumps({
+    #             "status": "bad-request",
+    #             "message": "Invalid file-type supplied, valid file-types are: " + get_valid_files()
+    #         }),
+    #             status=200,
+    #             mimetype='application/json')
 
 
 @app.route('/processed/<filename>', methods=['GET'])
