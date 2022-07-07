@@ -1,7 +1,12 @@
+import grequests
 import os, time, requests, threading, io, csv, logging
 from flask import Flask, request, Response, send_from_directory
 from werkzeug.utils import secure_filename
 import json
+import numpy as np
+
+
+
 
 
 app = Flask(__name__)
@@ -23,6 +28,7 @@ app.config['REQUIRED_FIELDS'] = ['body', 'file', 'api_key']
 
 global total_threads_running
 total_threads_running = 0
+MAX_CONNECTIONS = 3
 
 
 def get_timestamp():
@@ -84,6 +90,11 @@ def prepare_message(namespace, lang_code, wa_id, image, body_1, body_2, template
         }
     }
 
+def divide(lst, n):
+   arr = np.array(lst)
+   newarr = np.array_split(arr, MAX_CONNECTIONS)
+   return newarr
+
 
 def start_job(filename, message, api_key):
     total = 0
@@ -91,7 +102,9 @@ def start_job(filename, message, api_key):
     failed = 0
 
     csv_rows = []
+    csv_chunks = []
     fields = []
+    csv_arr = []
 
     # print(f"Job started at: {get_timestamp()}")
 
@@ -113,31 +126,54 @@ def start_job(filename, message, api_key):
         csvreader = csv.reader(f)
         fields = next(csvreader)
         fields.append('Status')
-
         for row in csvreader:
-            try:
-                wa_id = row[0]
-                message['to'] = wa_id
-                logger.info(f"Sending message to: {wa_id}")
-                req = hit_api(message, api_key)
-                
-                if (req):
-                    row.append('success')
-                    csv_rows.append(row)
+            csv_arr.append(row[0])
+
+        csv_chunks = divide(csv_arr, MAX_CONNECTIONS)
+
+        for chunk in csv_chunks:
+            logger.info(f"chunk called: {chunk}")
+           
+            headers = {'D360-API-KEY': api_key, 'Accept': '*/*'}
+            reqs = (grequests.post(app.config['API_URI'], json={
+                "to":u,
+                **message
+            },headers=headers) for u in chunk)
+
+            responses = grequests.map(reqs)
+            for response in responses:
+                print(response.content)
+                if response.status_code < 300:
                     successful += 1
                 else:
-                    logger.error(f"Error while sending message to: {wa_id}")
-                    row.append('failed')
-                    csv_rows.append(row)
                     failed += 1
+                total += 1
+                print(f"{'Success' if response.status_code < 300 else 'Failed'} messages sent")
 
-            except Exception as ex:
-                logger.error(f"Error while sending message to: {wa_id}")
-                logger.error(ex)
+                # for row in csvreader:
+                #     try:
+                #         wa_id = row[0]
+                #         message['to'] = wa_id
+                #         logger.info(f"Sending message to: {wa_id}")
+                #         req = hit_api(message, api_key)
 
-                row.append('failed')
-                csv_rows.append(row)
-                failed += 1
+                #         if (req):
+                #             row.append('success')
+                #             csv_rows.append(row)
+                #             successful += 1
+                #         else:
+                #             logger.error(f"Error while sending message to: {wa_id}")
+                #             row.append('failed')
+                #             csv_rows.append(row)
+                #             failed += 1
+
+                #     except Exception as ex:
+                #         logger.error(f"Error while sending message to: {wa_id}")
+                #         logger.error(ex)
+
+                #         row.append('failed')
+                #         csv_rows.append(row)
+                #         failed += 1
 
         total = len(list(csvreader))
 
